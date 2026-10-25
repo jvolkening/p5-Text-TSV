@@ -1,0 +1,17 @@
+.*
+!/.gitignore
+!/.gitattributes
+!/.github
+/Makefile
+/Makefile.old
+/blib/
+/META.yml
+/META.json
+/MYMETA*
+/pm_to_blib
+*.tar.gz
+releases
+/MANIFEST.bak
+/Build
+/_build
+/cover_db
