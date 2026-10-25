@@ -184,191 +184,153 @@ __END__
 
 =head1 NAME
 
-BioX::Tax::Kraken - simple access to Kraken-style taxDB taxonomy database
+Text::TSV - simple, robust parsing of tab-delimited text
 
 =head1 SYNOPSIS
 
-    use BioX::Tax::Kraken;
+    use Text::TSV;
 
-    use constant CHICKEN => 9031;
-    use constant HUMAN => 9606;
-    use constant VERTEBRATA => 7742;
-    use constant WHITE_OAK => 3513;
-    use constant HSV1 => 10298;
-
-    my $tax = BioX::Tax::Kraken->new($ARGV[0]);
-
-    say $tax->name(CHICKEN);
-    # 'Gallus gallus'
-    say $tax->rank(CHICKEN);
-    # 'species'
-    say $tax->name(
-        $tax->parent(CHICKEN)
+    # file with a header line (the default)
+    my $tsv = Text::TSV->new(
+        'data.tsv.xz',
+        expected_headers => [qw/id name/],
     );
-    # 'Gallus'
+    while (my $rec = $tsv->next_record) {
+        say "$rec->{id}: $rec->{name}";
+    }
 
-    say $tax->is_ancestor(CHICKEN, VERTEBRATA) ? 'Y' : 'N';
-    # 'Y'
-    say $tax->is_ancestor(CHICKEN, WHITE_OAK) ? 'Y' : 'N';
-    # 'N'
-    say $tax->a_isa_b(CHICKEN, WHITE_OAK) ? 'Y' : 'N';
-    # 'N'
-    say $tax->name(
-        $tax->lca(CHICKEN, HUMAN)
-    );
-    # 'Amniota'
-    say $tax->name(
-        $tax->lca(CHICKEN, WHITE_OAK)
-    );
-    # 'Eukaryota'
-    say join ' > ',
-        map {$tax->name($_)}
-        $tax->lineage(HSV1);
-    # 'root > Viruses > Duplodnaviria > Heunggongvirae > Peploviricota >
-    # Herviviricetes > Herpesvirales > Orthoherpesviridae > Alphaherpesvirinae >
-    # Simplexvirus > Simplexvirus humanalpha1'
-    say join ' > ',
-        map {$tax->rank($_)}
-        $tax->lineage(HSV1);
-    # 'no rank > domain > clade > kingdom > phylum > class > order > family >
-    # subfamily > genus > species'
+    # file without a header line
+    my $raw = Text::TSV->new('data.tsv', has_header => 0);
+    while (my $row = $raw->next_record) {
+        say join ',', @{ $row };
+    }
+
+    # lenient parsing
+    my $lax = Text::TSV->new('data.tsv', strict => 0, strip_comments => 0);
 
 =head1 DESCRIPTION
 
-NOTE:: This distribution is currently in testing phase. The API may change
-without notice. You have been warned.
+C<Text::TSV> reads tab-delimited text files one record at a time. It does no
+quoting or escaping: fields are separated by single tab characters and nothing
+else is special. Input is decoded as UTF-8. Compressed input is detected
+automatically from magic bytes (not file extension).
 
-C<BioX::Tax::Kraken> is a simple interface to a Kraken-style flatfile
-taxonomic database, typically using the filename 'taxDB'. This file format is
-a four-column tab-delimited text file, where the columns contain:
+=head1 CONSTRUCTOR
 
 =over 4
 
-=item B<taxonomic ID>
+=item B<new> I<filename> [I<options>]
 
-=item B<parent ID>
+    my $tsv = Text::TSV->new($fn, strict => 1, has_header => 1);
 
-=item B<name> (typically scientific)
+Opens the file and, if headers are expected, reads and validates the header
+line. Dies on any error. Options:
 
-=item B<rank>
+=over 4
+
+=item B<has_header> (default: 1)
+
+If true, the first content line is parsed as column names and records are
+returned as hash references. If false, records are returned as array
+references.
+
+=item B<expected_headers> (default: none)
+
+Array reference of column names that must be present in the header line
+(extra columns are allowed). Dies with C<Missing expected header 'NAME'> if
+one is absent. Supplying this together with an explicitly false C<has_header>
+is a configuration error and dies.
+
+=item B<strict> (default: 1)
+
+See L</STRICT VS NON-STRICT MODE>.
+
+=item B<strip_comments> (default: 1)
+
+If true, lines whose first non-space character (space characters only, not
+tabs) is C<#> are skipped, including before the header. If false, such lines
+are treated as ordinary data (or header) lines.
 
 =back
 
-This distribution has a single class with methods to look up and compare
-entries in a Kraken-style taxonomic database based on one or more taxonomic
-IDs. It is designed to be simple and correct, and it is written to balance
-speed and memory consumption. It is neither blazing fast nor ultra memory
-efficient; there are better options for taxonomic data storage formats and
-interfaces if you have one of these requirements. This software's only purpose
-is to facilitate easy access to the information stored in a Kraken-style
-database if you are already using that format for other reasons.
-
-NOTE: The author typically utilizes the NCBI taxonomic database, where
-taxonomic IDs are positive integers. Because this is Perl, all of the class
-methods can be given either integers or strings as inputs; all inputs will be
-treated as strings internally for purposes of comparison.
-
-=head1 A NOTE ON ERROR HANDLING
-
-The methods in this module are intentionally designed to be forgiving by
-default. All methods take one or more taxonomic IDs as arguments; if an ID is
-not found in the database, undefined is returned but no errors are thrown.
-Because most taxonomic databases are constantly changing, this design choice
-allows for the possibility of graceful failure if an ID has been removed from
-the database without wrapping every method call in a try/catch block.
-
-If you wish to treat these cases as errors, you must check for the definedness
-of return values and throw your own errors accordingly. 
+=back
 
 =head1 METHODS
 
 =over 4
 
-=item B<new> I<filename>
+=item B<next_record>
 
-    my $tax = BioX::Tax::Kraken->new('/path/to/taxDB');
+    while (my $rec = $tsv->next_record) { ... }
 
-Create a new C<BioX::Tax::Kraken> object and load the database from file. The
-input filename is required, and uncompressed or xz-compressed inputs are
-supported (xz has significantly better compression ratios than gzip, bzip2, or
-zstd on taxDB files).
-
-Returns a new C<BioX::Tax::Kraken> object.
-
-=item B<name> I<tax ID>
-
-=item B<rank> I<tax ID>
-
-=item B<parent> I<tax ID>
-
-    say $tax->name(9031); # 'Gallus gallus'
-    say $tax->rank(9031); # 'species'
-    say $tax->parent(9031); # '9030'
-
-Given a valid taxonomic ID, fetch the associated property from the database.
-
-Returns a scalar string, or undefined if no entry was found for the input ID.
-
-=item B<is_ancestor> I<child ID> I<parent ID>
-
-    say "That explains a lot!"
-        if $tax->is_ancestor(9606, 9443);
-
-Given two valid taxonomic IDs, queries to database to check if the second ID
-is an ancestor (not necessarily direct) of the first.
-
-Returns a boolean value, or undefined if either ID was not found in the
-database.
-
-=item B<a_isa_b> I<child ID> I<parent ID>
-
-Alias of C<is_ancestor> whose name makes it a little easier to remember the
-order of arguments
-
-=item B<lineage> I<tax ID>
-
-    for my $id ( $tax->lineage(9031) ) {
-        say sprintf "%s: %s",
-            $tax->rank($id),
-            $tax->name($id);
-    }
-
-Given a valid taxonomic ID, calculates the taxonomic lineage from the tree
-root to the given node, inclusive.
-
-Returns a list of IDs, or undefined if the given ID was not found in the
-database.
-
-=item B<lca> I<tax ID 1> I<tax ID 2> ...
-
-    my $oldun = $tax->lca(9031, 9606);
-
-Given two or more tax IDs, calculates the last common ancestor (LCA, aka MRCA)
-in common to all given nodes.
-
-Returns a taxonomic ID, or undefined if one or more given IDs were not found
-in the database.
-
-=item B<children> I<tax ID>
-
-    my @descendents = $tax->children(9031);
-
-Given a valid tax ID, traverses the taxonomic tree to collect all intermediate
-and leaf nodes that descend from that ID. BEWARE: The class does not currently
-store any back-references when parsing the input database. Thus, unlike all
-other instance methods, this method currently must traverse the *entire*
-database each time it is called, and it therefore will be a significant
-bottleneck if called over thousands or millions of inputs.
-
-Returns an unsorted list of IDs, or undefined if the given ID was not
-found in the database.
+Returns the next record, or an empty list/undef at end of input. With headers
+the record is a hash reference mapping header names to field values; without
+headers it is an array reference of fields. If a row has fewer fields than
+headers (non-strict mode), the missing fields are undefined; if it has more,
+the extra fields are ignored in the hash. Trailing empty fields are preserved.
 
 =back
 
+=head1 INPUT FORMAT AND ASSUMPTIONS
+
+=over 4
+
+=item * Lines end in C<\n> or C<\r\n>; the line ending is removed.
+
+=item * Fields are separated by a single tab; no quoting is supported.
+
+=item * Header names must be non-empty (not blank/whitespace) and unique;
+duplicates die rather than silently losing data.
+
+=item * Text is read as UTF-8. No byte-order-mark (BOM) handling is performed;
+a BOM will remain part of the first header name.
+
+=item * Unrecognized input whose first bytes look binary (control characters)
+dies.
+
+=back
+
+=head1 COMPRESSION SUPPORT
+
+For speed, compressed files are read through external decompressors rather
+than Perl modules. Detection is by magic bytes: XZ (C<xzcat>), gzip
+(C<zcat>), bzip2 (C<bzcat>) and zstd (C<zstdcat>). If the needed program is
+not in the C<PATH>, the constructor dies naming the missing program.
+
+=head1 STRICT VS NON-STRICT MODE
+
+In strict mode (the default):
+
+=over 4
+
+=item * every record must have the same number of fields as the header (or as
+the first record, when there is no header); otherwise C<next_record> dies with
+a "column count mismatch" error;
+
+=item * the header line must contain at least one tab;
+
+=item * blank lines are not skipped and so fail the width check (unless the
+file has a single column and no header).
+
+=back
+
+In non-strict mode, width mismatches are tolerated, completely empty lines are
+skipped, and a single-column header is allowed. Lines containing only
+whitespace other than a newline are not considered blank.
+
+=head1 ERROR HANDLING
+
+All errors are thrown with C<die>; wrap calls in C<eval> or a try/catch
+module to handle them. Errors include: unreadable file, binary input,
+missing decompressor, missing header line, empty or duplicate header names,
+missing expected headers, conflicting options, and (strict mode) column count
+mismatches.
+
 =head1 CAVEATS AND BUGS
 
-Please reports bugs or feature requests through the issue tracker at
-L<https://github.com/jvolkening/p5-BioX-Tax-Kraken/issues>.
+External decompressors must be installed for compressed input. Please report
+bugs or feature requests through the issue tracker at
+L<https://github.com/jvolkening/p5-Text-TSV/issues>.
 
 =head1 AUTHOR
 
@@ -382,4 +344,3 @@ This software is licensed under the same terms as Perl 5 itself. See LICENSE
 file for full details.
 
 =cut
-
