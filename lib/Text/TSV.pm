@@ -8,7 +8,7 @@ use utf8;
 use open qw(:std :utf8);
 
 use IPC::Cmd qw/can_run/;
-use List::Util qw/any/;
+use List::Util qw/any uniq/;
 
 use constant XZ_MAGIC => "\xFD7zXZ\x00";
 use constant GZIP_MAGIC => "\x1F\x8B";
@@ -93,6 +93,8 @@ sub _parse_headers {
         if (any {$_ !~ /\S/} @headers);
     die "Strict mode failure: no delimiters found in header\n"
         if ($self->{strict} && scalar @headers < 2);
+    die "Duplicate headers found, bailing to avoid data loss\n"
+        if (scalar @headers != scalar uniq @headers);
 
     $self->{headers} = \@headers;
     $self->{width} = scalar @headers;
