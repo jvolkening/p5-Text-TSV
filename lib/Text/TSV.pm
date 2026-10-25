@@ -230,6 +230,7 @@ Text::TSV - simple, robust parsing of tab-delimited text
     while (my $rec = $tsv->next_record) {
         say "$rec->{id}: $rec->{name}";
     }
+    my @headers = $tsv->headers;
 
     # file without a header line; records returned as arrayref
     my $raw = Text::TSV->new(
@@ -255,16 +256,24 @@ treated as a header. It does no quoting or escaping: fields are separated by
 single tab characters. Input is decoded as UTF-8. Compressed input is detected
 automatically from magic bytes (not file extension).
 
-This is a purpose-built module whose purpose is to enable robust parsing of standard
-tab-delimited data with minimal code. It is *much* less flexible than C<Text::CSV>,
-which you should use if you need anything other than vanilla tab-delimited
-parsing.
+By default, this module operates in 'strict' mode and expects rectangular
+(every row has the same number of fields), tab-delimited input where the first
+non-commented line contains column headers. Lines beginning with a '#' are
+ignored as comments. Blank lines are considered malformed. A few of these
+assumptions can be tweaked using the constructor options described below.
 
-By default, this module expects rectangular (every row has the same number
-of fields) tab-delimited input where the first non-commented line contains
-column headers. Lines beginning with a '#' are ignored as comments. Blank
-lines are considered malformed. A few of these assumptions can be tweaked
-using the constructor options described below.
+=head2 Raison d'être
+
+<Text::TSV> exists mainly because the author could never remember the set of
+arguments to <Text::CSV::csv> that would give him the expected behavior, and
+99% of his usage for <Text::CSV> was in parsing rectangular, tab-delimited
+data files. This is therefore an opinionated, terse module intended to ingest
+a specific (though widely used) delimimated text format with a minimum of
+boilerplate code. The features and knobs included are those most often needed by the
+author. Some method has been made to optimize for speed without sacrificing
+robust behavior, but <Text::TSV> is neither the fastest nor the most flexible
+approach to parsing TSV files. The author recommends C<Text::CSV> for any
+needs that fall outside of the rather narrow delineations of this module.
 
 =head1 CONSTRUCTOR
 
@@ -394,6 +403,10 @@ mismatches.
 External decompressors must be installed for compressed input. Please report
 bugs or feature requests through the issue tracker at
 L<https://github.com/jvolkening/p5-Text-TSV/issues>.
+
+=head1 SEE ALSO
+
+L<Text::CSV>
 
 =head1 AUTHOR
 
