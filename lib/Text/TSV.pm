@@ -104,6 +104,15 @@ sub _parse_headers {
 
 }
 
+sub headers {
+
+    my ($self) = @_;
+    return @{ $self->{headers} }
+        if ($self->{has_headers});
+    return;
+
+}
+
 sub _validate_headers {
     
     my ($self, $expected_headers) = @_;
@@ -305,6 +314,12 @@ fields are allowed, but a mismatch between record field count and header name
 count will throw an error. In non-strict mode, if a row has fewer fields than
 headers, the missing fields are undefined; if it has more, the extra fields
 are ignored in the hash. Trailing empty fields are preserved.
+
+=item B<headers>
+
+    my @h = $tsv->headers;
+
+Returns an array of header names, or undef if no headers were present/parsed.
 
 =back
 

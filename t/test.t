@@ -43,11 +43,13 @@ subtest 'header mode' => sub {
     my $t = Text::TSV->new(mk("a\tb\n1\t2\n3\t4\n"));
     is(all($t), [{a => 1, b => 2}, {a => 3, b => 4}], 'hash records');
     is($t->next_record, undef, 'undef at EOF');
+    is([$t->headers], ['a', 'b'], 'headers()');
 };
 
 subtest 'no-header mode' => sub {
     my $t = Text::TSV->new(mk("a\tb\n1\t2\n"), has_header => 0);
     is(all($t), [['a', 'b'], [1, 2]], 'array records');
+    is($t->headers, undef, 'no headers()');
 };
 
 subtest 'expected_headers' => sub {
@@ -59,6 +61,11 @@ subtest 'expected_headers' => sub {
         qr/expected_headers requires has_header/, 'conflict dies');
     ok(lives { Text::TSV->new($fn, expected_headers => ['a'], has_header => 1) },
         'explicit has_header => 1 ok');
+};
+subtest 'invalid args' => sub {
+    my $fn = mk("a\tb\tc\n1\t2\t3\n");
+    like(dies { Text::TSV->new($fn, has_headers => 1) },
+        qr/Invalid argument passed/, 'bad arg dies');
 };
 
 subtest 'strict width' => sub {
