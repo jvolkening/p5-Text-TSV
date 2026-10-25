@@ -4,8 +4,6 @@ use strict;
 use warnings;
 use 5.016;
 use autodie;
-use utf8;
-use open qw(:std :utf8);
 
 use Encode;
 use IO::Uncompress::AnyUncompress qw/$AnyUncompressError/;
@@ -213,6 +211,8 @@ sub _has_bytes {
 
 
 __END__
+
+=encoding utf-8
 
 =head1 NAME
 
