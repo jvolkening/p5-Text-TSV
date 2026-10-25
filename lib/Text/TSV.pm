@@ -57,7 +57,8 @@ sub next_record {
         last;
     }
     return if (! defined $line);
-    $line =~ s/\r?\n\z//;
+    chomp $line;
+    $line =~ s/\r\z//;
     my @f = split "\t", $line, -1;
     $self->{width} //= scalar @f;
     die "Strict mode failure: column count mismatch\n"
@@ -70,31 +71,25 @@ sub next_record {
     
 }
 
-sub _next_content_line {
-
-    my ($self) = @_;
-
-    my $fh = $self->{fh};
-    while (defined(my $line = <$fh>)) {
-        $line = Encode::decode('UTF-8', $line, Encode::FB_CROAK)
-            if ($self->{_decode_by_line});
-        next if $self->{strip_comments} && ($line =~ /^[ ]*#/);
-        next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
-        $line =~ s/\r?\n\z//;
-        return $line;
-    }
-    return;
-
-}
-
 sub _parse_headers {
 
     my ($self) = @_;
 
-    my $h = $self->_next_content_line()
-        // die "Error: missing header line when told to expect\n";
+    my $fh = $self->{fh};
+    my $line;
+    while (defined($line = <$fh>)) {
+        $line = Encode::decode('UTF-8', $line, Encode::FB_CROAK)
+            if ($self->{_decode_by_line});
+        next if $self->{strip_comments} && $line =~ /^[ ]*#/;
+        next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
+        last;
+    }
+    die "Error: missing header line when told to expect\n"
+        if (! defined $line);
+    chomp $line;
+    $line =~ s/\r\z//;
 
-    my @headers = split "\t", $h, -1;
+    my @headers = split "\t", $line, -1;
     die "Error: empty headers found\n"
         if (any {$_ !~ /\S/} @headers);
     die "Strict mode failure: no delimiters found in header\n"
