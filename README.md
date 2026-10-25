@@ -63,9 +63,9 @@ arguments to `Text::CSV::csv` that would give him the expected behavior, and
 data files. This is therefore an opinionated, terse module intended to ingest
 a specific (though widely used) delimited text format with a minimum of
 boilerplate code. The features and knobs included are those most often needed by the
-author. Some method has been made to optimize for speed without sacrificing
+author. Some effort has been made to optimize for speed without sacrificing
 robust behavior, but `Text::TSV` is neither the fastest nor the most flexible
-approach to parsing TSV files. The author recommends `Text::CSV` for any
+approach to parsing TSV files. The author recommends [Text::CSV](https://metacpan.org/pod/Text%3A%3ACSV) for any
 needs that fall outside of the rather narrow delineations of this module.
 
 # CONSTRUCTOR

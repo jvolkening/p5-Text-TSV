@@ -1,0 +1,7 @@
+[![Tests](https://github.com/jvolkening/p5-Text-TSV/actions/workflows/tests.yml/badge.svg)](https://github.com/jvolkening/p5-Text-TSV/actions/workflows/tests.yml)
+[![Coverage Status](https://coveralls.io/repos/github/jvolkening/p5-Text-TSV/badge.svg?branch=main)](https://coveralls.io/github/jvolkening/p5-Text-TSV?branch=main)
+[![CPAN version](https://badge.fury.io/pl/Text-TSV.svg)](https://badge.fury.io/pl/Text-TSV)
+
+**WARNING**: Currently in testing phase. The API may change in future releases without notice. You have been warned!
+
+
