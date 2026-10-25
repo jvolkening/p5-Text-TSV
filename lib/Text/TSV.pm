@@ -23,7 +23,9 @@ sub new {
     my $self = bless {fn => $fn_in}, $class;
 
     $self->_set_handle();
-    $self->{has_headers} = $args{has_header} // 1;
+    $self->{has_headers} = defined $args{expected_headers} ? 1
+        : defined $args{has_header} ? $args{has_header}
+        : 1;
     $self->{strip_comments} = $args{strip_comments} // 1;
     $self->{strict} = $args{strict} // 1;
     $self->_parse_headers()
@@ -40,7 +42,7 @@ sub next_record {
 
     my $fh = $self->{fh};
     my $line = <$fh> // return;
-    while (_is_comment_line($line)) {
+    while ($self->{strip_comments} && _is_comment_line($line)) {
         $line = <$fh> // return;
     }
     chomp $line;
@@ -71,11 +73,10 @@ sub _parse_headers {
 
     my $h = <$fh>
         // die "Error: missing header line when told to expect\n";
-    chomp $h;
     while ($self->{strip_comments} && _is_comment_line($h)) {
         $h = <$fh> // die "Reached EOF before finding header";
-        chomp $h;
     }
+    chomp $h;
     my @headers = split "\t", $h, -1;
     die "Error: empty headers found\n"
         if (any {$_ !~ /\S/} @headers);
@@ -121,7 +122,7 @@ sub _set_handle {
     }
     elsif ( _has_bytes($self->{fn}, BZIP2_MAGIC) ) {
         my $BZCAT = can_run('bzcat')
-            // die "Error: require 'zstdcat' for BZIP2-compressed input\n";
+            // die "Error: require 'bzcat' for BZIP2-compressed input\n";
         open $fh_in, '-|', $BZCAT, $self->{fn};
     }
     elsif ( _has_bytes($self->{fn}, ZSTD_MAGIC) ) {
