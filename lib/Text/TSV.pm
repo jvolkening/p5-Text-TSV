@@ -45,6 +45,9 @@ sub next_record {
     while ($self->{strip_comments} && _is_comment_line($line)) {
         $line = <$fh> // return;
     }
+    while (!$self->{strict} && $line !~ /\S/) {
+        $line = <$fh> // return;
+    }
     chomp $line;
     my @f = split "\t", $line, -1;
     $self->{width} //= scalar @f;
@@ -74,6 +77,9 @@ sub _parse_headers {
     my $h = <$fh>
         // die "Error: missing header line when told to expect\n";
     while ($self->{strip_comments} && _is_comment_line($h)) {
+        $h = <$fh> // die "Reached EOF before finding header";
+    }
+    while (!$self->{strict} && $h !~ /\S/) {
         $h = <$fh> // die "Reached EOF before finding header";
     }
     chomp $h;
