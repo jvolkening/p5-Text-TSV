@@ -34,13 +34,15 @@ sub new {
 
 }
 
-sub next_line {
+sub next_record {
     
     my ($self) = @_;
 
     my $fh = $self->{fh};
-    my $line = <$fh>
-        // return;
+    my $line = <$fh> // return;
+    while (_is_comment_line($line)) {
+        $line = <$fh> // return;
+    }
     chomp $line;
     my @f = split "\t", $line, -1;
     $self->{width} //= scalar @f;
@@ -67,7 +69,8 @@ sub _parse_headers {
 
     my $fh = $self->{fh};
 
-    my $h = <$fh>;
+    my $h = <$fh>
+        // die "Error: missing header line when told to expect\n";
     chomp $h;
     while ($self->{strip_comments} && _is_comment_line($h)) {
         $h = <$fh> // die "Reached EOF before finding header";
@@ -90,6 +93,7 @@ sub _validate_headers {
     
     my ($self, $expected_headers) = @_;
 
+    return if (! defined $expected_headers);
     my @known_headers = @{ $self->{headers} };
     for my $h (@{ $expected_headers }) {
         die "Missing expected header '$h'\n"
