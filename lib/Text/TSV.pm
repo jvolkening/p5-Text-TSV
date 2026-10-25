@@ -47,7 +47,17 @@ sub next_record {
     
     my ($self) = @_;
 
-    my $line = $self->_next_content_line() // return;
+    my $fh = $self->{fh};
+    my $line;
+    while (defined($line = <$fh>)) {
+        $line = Encode::decode('UTF-8', $line, Encode::FB_CROAK)
+            if ($self->{_decode_by_line});
+        next if $self->{strip_comments} && $line =~ /^[ ]*#/;
+        next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
+        last;
+    }
+    return if (! defined $line);
+    $line =~ s/\r?\n\z//;
     my @f = split "\t", $line, -1;
     $self->{width} //= scalar @f;
     die "Strict mode failure: column count mismatch\n"
@@ -66,23 +76,14 @@ sub _next_content_line {
 
     my $fh = $self->{fh};
     while (defined(my $line = <$fh>)) {
-        # IO::Uncompress handles can't take an :encoding layer, so decode here
-        # if we are falling back
         $line = Encode::decode('UTF-8', $line, Encode::FB_CROAK)
             if ($self->{_decode_by_line});
-        next if $self->{strip_comments} && _is_comment_line($line);
+        next if $self->{strip_comments} && ($line =~ /^[ ]*#/);
         next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
         $line =~ s/\r?\n\z//;
         return $line;
     }
     return;
-
-}
-
-sub _is_comment_line {
-
-    my ($line) = @_;
-    return $line =~ /^[ ]*#/;
 
 }
 
@@ -163,7 +164,6 @@ sub _set_handle {
     }
     else {
         open $fh_in, '<', $self->{fn};
-        warn "Plain text!\n";
     }
     binmode $fh_in, ':encoding(UTF-8)'
         if (! $self->{_decode_by_line});
