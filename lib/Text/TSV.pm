@@ -22,6 +22,12 @@ sub new {
 
     my $self = bless {fn => $fn_in}, $class;
 
+    # validation checks
+    die "Error: expected_headers requires has_header => 1\n"
+        if defined $args{expected_headers}
+            && defined $args{has_header}
+            && !$args{has_header};
+
     $self->_set_handle();
     $self->{has_headers} = defined $args{expected_headers} ? 1
         : defined $args{has_header} ? $args{has_header}
@@ -40,15 +46,8 @@ sub next_record {
     
     my ($self) = @_;
 
-    my $fh = $self->{fh};
-    my $line = <$fh> // return;
-    while ($self->{strip_comments} && _is_comment_line($line)) {
-        $line = <$fh> // return;
-    }
-    while (!$self->{strict} && $line !~ /\S/) {
-        $line = <$fh> // return;
-    }
-    chomp $line;
+    my $line = $self->_next_content_line() // return;
+    $line =~ s/\r?\n\z//;
     my @f = split "\t", $line, -1;
     $self->{width} //= scalar @f;
     die "Strict mode failure: column count mismatch\n"
@@ -61,10 +60,24 @@ sub next_record {
     
 }
 
+sub _next_content_line {
+
+    my ($self) = @_;
+
+    my $fh = $self->{fh};
+    while (defined(my $line = <$fh>)) {
+        next if $self->{strip_comments} && _is_comment_line($line);
+        next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
+        return $line;
+    }
+    return;
+
+}
+
 sub _is_comment_line {
 
     my ($line) = @_;
-    return $line =~ /^\s*#/;
+    return $line =~ /^[ ]*#/;
 
 }
 
@@ -72,17 +85,10 @@ sub _parse_headers {
 
     my ($self) = @_;
 
-    my $fh = $self->{fh};
-
-    my $h = <$fh>
+    my $h = $self->_next_content_line()
         // die "Error: missing header line when told to expect\n";
-    while ($self->{strip_comments} && _is_comment_line($h)) {
-        $h = <$fh> // die "Reached EOF before finding header";
-    }
-    while (!$self->{strict} && $h !~ /\S/) {
-        $h = <$fh> // die "Reached EOF before finding header";
-    }
-    chomp $h;
+    $h =~ s/\r?\n\z//;
+
     my @headers = split "\t", $h, -1;
     die "Error: empty headers found\n"
         if (any {$_ !~ /\S/} @headers);
@@ -151,9 +157,9 @@ sub _looks_binary {
     my ($fn) = @_;
 
     open my $in, '<:raw', $fn;
-    read( $in, my $buf, 6 );
+    read( $in, my $buf, 64 );
     close $in;
-    return $buf =~ /[^\P{C}\s]/;
+    return $buf =~ /[\x00-\x08\x0B\x0E-\x1F]/;
 
 }
 
