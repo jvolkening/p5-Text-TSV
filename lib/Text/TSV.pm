@@ -366,8 +366,9 @@ dies.
 
 For speed, compressed files are read through external decompressors if
 possible, falling back to (slow!) core Perl modules if an external
-decompresssor is not found. Detection is by magic bytes: XZ (C<xzcat>), gzip
-(C<zcat>), bzip2 (C<bzcat>) and zstd (C<zstdcat>).
+decompresssor is not found. Detection is by magic bytes. Supported compression
+types and corresponding external decompresssors are: XZ (C<xzcat>), gzip
+(C<zcat>), bzip2 (C<bzcat>), and zstd (C<zstdcat>).
 
 =head1 STRICT VS NON-STRICT MODE
 
