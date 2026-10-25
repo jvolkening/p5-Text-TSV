@@ -7,7 +7,8 @@ use autodie;
 use utf8;
 use open qw(:std :utf8);
 
-use IO::Uncompress::AnyUncompress;
+use Encode;
+use IO::Uncompress::AnyUncompress qw/$AnyUncompressError/;
 use IPC::Cmd qw/can_run/;
 use List::Util qw/any uniq/;
 
@@ -47,7 +48,6 @@ sub next_record {
     my ($self) = @_;
 
     my $line = $self->_next_content_line() // return;
-    $line =~ s/\r?\n\z//;
     my @f = split "\t", $line, -1;
     $self->{width} //= scalar @f;
     die "Strict mode failure: column count mismatch\n"
@@ -66,8 +66,13 @@ sub _next_content_line {
 
     my $fh = $self->{fh};
     while (defined(my $line = <$fh>)) {
+        # IO::Uncompress handles can't take an :encoding layer, so decode here
+        # if we are falling back
+        $line = Encode::decode('UTF-8', $line, Encode::FB_CROAK)
+            if ($self->{_decode_by_line});
         next if $self->{strip_comments} && _is_comment_line($line);
         next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
+        $line =~ s/\r?\n\z//;
         return $line;
     }
     return;
@@ -87,7 +92,6 @@ sub _parse_headers {
 
     my $h = $self->_next_content_line()
         // die "Error: missing header line when told to expect\n";
-    $h =~ s/\r?\n\z//;
 
     my @headers = split "\t", $h, -1;
     die "Error: empty headers found\n"
@@ -125,33 +129,44 @@ sub _set_handle {
 
     my $fh_in;
     my %pp_opts = ( MultiStream => 1 );
+    my ($tool, $label);
     if ( _has_bytes($self->{fn}, XZ_MAGIC) ) {
-        open( $fh_in, '-|', 'xzcat', $self->{fn} )
-            if (can_run 'xzcat');
-        $fh_in //= IO::Uncompress::AnyUncompress->new($self->{fn}, %pp_opts);
+        ($tool, $label) = ('xzcat', 'XZ');
     }
     elsif ( _has_bytes($self->{fn}, GZIP_MAGIC) ) {
-        open( $fh_in, '-|', 'zcat', $self->{fn} )
-            if (can_run 'zcat');
-        $fh_in //= IO::Uncompress::AnyUncompress->new($self->{fn}, %pp_opts);
+        ($tool, $label) = ('zcat', 'GZ');
     }
     elsif ( _has_bytes($self->{fn}, BZIP2_MAGIC) ) {
-        open( $fh_in, '-|', 'bzcat', $self->{fn} )
-            if (can_run 'bzcat');
-        $fh_in //= IO::Uncompress::AnyUncompress->new($self->{fn}, %pp_opts);
+        ($tool, $label) = ('bzcat', 'BZIP2');
     }
     elsif ( _has_bytes($self->{fn}, ZSTD_MAGIC) ) {
-        open( $fh_in, '-|', 'zstdcat', $self->{fn} )
-            if (can_run 'zstdcat');
-        $fh_in //= IO::Uncompress::AnyUncompress->new($self->{fn}, %pp_opts);
+        ($tool, $label) = ('zstdcat', 'ZSTD');
+    }
+
+    if (defined $tool) {
+        my $tool_path = can_run $tool;
+        if ($tool_path) {
+            open $fh_in, '-|', $tool_path, $self->{fn};
+        }
+        else {
+            $fh_in = IO::Uncompress::AnyUncompress->new($self->{fn}, %pp_opts)
+                // die sprintf(
+                    "Error: '%s' not found and IO::Uncompress::AnyUncompress"
+                    . " failed for %s-compressed input '%s' (%s)\n",
+                    $tool, $label, $self->{fn}, $AnyUncompressError
+                );
+            $self->{_decode_by_line} = 1;
+        }
     }
     elsif ( _looks_binary($self->{fn}) ) {
         die "Error: input appears binary but is not a compatible compressed format\n";
     }
     else {
         open $fh_in, '<', $self->{fn};
+        warn "Plain text!\n";
     }
-    binmode $fh_in, ':encoding(UTF-8)';
+    binmode $fh_in, ':encoding(UTF-8)'
+        if (! $self->{_decode_by_line});
     $self->{fh} = $fh_in;
 
 }

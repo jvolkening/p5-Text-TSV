@@ -174,11 +174,26 @@ subtest 'compressed' => sub {
     SKIP: {
         skip 'xzcat unavailable', 1 if !$has_xz;
         is(all(Text::TSV->new("$FindBin::Bin/test_data/foo.tsv.xz"))->[0]{header1},
-            "value1-\x{3b2}", 'shipped xz file');
+            "value1-\x{3b2}", 'xz file');
     }
 };
 
-subtest 'shipped plain file' => sub {
+subtest 'Perl fallback used when decompressor not found' => sub {
+    my $fn = compressed('gzip', 'gzip -c');
+    skip_all 'cannot create gzip test file' if !defined $fn;
+
+    my @expect = ({a => 1, b => 2}, {a => "\x{e9}", b => 4});
+
+    my $mock = mock 'Text::TSV' => (
+        override => [ can_run => sub { return undef } ],
+    );
+
+    my $t = Text::TSV->new($fn);
+    ok($t->{fh}->isa('IO::Uncompress::Base'), 'fallback handle used');
+    is(all($t), \@expect, 'records parsed via Perl fallback');
+};
+
+subtest 'plain file' => sub {
     my $t = Text::TSV->new("$FindBin::Bin/test_data/foo.tsv");
     my $r = all($t);
     is(scalar @$r, 2, 'two records');
