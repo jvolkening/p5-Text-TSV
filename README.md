@@ -4,39 +4,42 @@
 
 **WARNING**: Currently in testing phase. The API may change in future releases without notice. You have been warned!
 
+
 # NAME
 
 Text::TSV - simple, robust parsing of tab-delimited text
 
 # SYNOPSIS
 
-    use Text::TSV;
+```perl
+use Text::TSV;
 
-    # file with a header line (the default); records returned as hashref
-    my $tsv = Text::TSV->new(
-        'data.tsv.xz',
-        expected_headers => [qw/id name/],
-    );
-    while (my $rec = $tsv->next_record) {
-        say "$rec->{id}: $rec->{name}";
-    }
-    my @headers = $tsv->headers;
+# file with a header line (the default); records returned as hashref
+my $tsv = Text::TSV->new(
+    'data.tsv.xz',
+    expected_headers => [qw/id name/],
+);
+while (my $rec = $tsv->next_record) {
+    say "$rec->{id}: $rec->{name}";
+}
+my @headers = $tsv->headers;
 
-    # file without a header line; records returned as arrayref
-    my $raw = Text::TSV->new(
-        'data.tsv',
-        has_header => 0
-    );
-    while (my $row = $raw->next_record) {
-        say join ',', @{ $row };
-    }
+# file without a header line; records returned as arrayref
+my $raw = Text::TSV->new(
+    'data.tsv',
+    has_header => 0
+);
+while (my $row = $raw->next_record) {
+    say join ',', @{ $row };
+}
 
-    # lenient parsing
-    my $lax = Text::TSV->new(
-        'data.tsv',
-        strict => 0,
-        strip_comments => 0
-    );
+# lenient parsing
+my $lax = Text::TSV->new(
+    'data.tsv',
+    strict => 0,
+    strip_comments => 0
+);
+```
 
 # DESCRIPTION
 
@@ -54,26 +57,28 @@ assumptions can be tweaked using the constructor options described below.
 
 ## Raison d'être
 
-<Text::TSV> exists mainly because the author could never remember the set of
-arguments to <Text::CSV::csv> that would give him the expected behavior, and
-99% of his usage for <Text::CSV> was in parsing rectangular, tab-delimited
+`Text::TSV` exists mainly because the author could never remember the set of
+arguments to `Text::CSV::csv` that would give him the expected behavior, and
+99% of his usage for `Text::CSV` was in parsing rectangular, tab-delimited
 data files. This is therefore an opinionated, terse module intended to ingest
-a specific (though widely used) delimimated text format with a minimum of
+a specific (though widely used) delimited text format with a minimum of
 boilerplate code. The features and knobs included are those most often needed by the
 author. Some method has been made to optimize for speed without sacrificing
-robust behavior, but <Text::TSV> is neither the fastest nor the most flexible
+robust behavior, but `Text::TSV` is neither the fastest nor the most flexible
 approach to parsing TSV files. The author recommends `Text::CSV` for any
 needs that fall outside of the rather narrow delineations of this module.
 
 # CONSTRUCTOR
 
-- **new** _filename_ \[_options_\]
+- **new** *filename* \[*options*\]
 
-        my $tsv = Text::TSV->new(
-            $fn,
-            strict => 1,
-            has_header => 1
-        );
+    ```perl
+    my $tsv = Text::TSV->new(
+        $fn,
+        strict => 1,
+        has_header => 1
+    );
+    ```
 
     Opens the file and, if headers are expected, reads and validates the header
     line. Dies on any error. Options:
@@ -105,7 +110,9 @@ needs that fall outside of the rather narrow delineations of this module.
 
 - **next\_record**
 
-        while (my $rec = $tsv->next_record) { ... }
+    ```perl
+    while (my $rec = $tsv->next_record) { ... }
+    ```
 
     Returns the next record, or an empty list/undef at end of input. With headers,
     the record is a hash reference mapping header names to field values; without
@@ -117,7 +124,9 @@ needs that fall outside of the rather narrow delineations of this module.
 
 - **headers**
 
-        my @h = $tsv->headers;
+    ```perl
+    my @h = $tsv->headers;
+    ```
 
     Returns an array of header names, or undef if no headers were present/parsed.
 

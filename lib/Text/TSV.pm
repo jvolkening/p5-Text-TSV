@@ -264,14 +264,14 @@ assumptions can be tweaked using the constructor options described below.
 
 =head2 Raison d'être
 
-<Text::TSV> exists mainly because the author could never remember the set of
-arguments to <Text::CSV::csv> that would give him the expected behavior, and
-99% of his usage for <Text::CSV> was in parsing rectangular, tab-delimited
+C<Text::TSV> exists mainly because the author could never remember the set of
+arguments to C<Text::CSV::csv> that would give him the expected behavior, and
+99% of his usage for C<Text::CSV> was in parsing rectangular, tab-delimited
 data files. This is therefore an opinionated, terse module intended to ingest
-a specific (though widely used) delimimated text format with a minimum of
+a specific (though widely used) delimited text format with a minimum of
 boilerplate code. The features and knobs included are those most often needed by the
 author. Some method has been made to optimize for speed without sacrificing
-robust behavior, but <Text::TSV> is neither the fastest nor the most flexible
+robust behavior, but C<Text::TSV> is neither the fastest nor the most flexible
 approach to parsing TSV files. The author recommends C<Text::CSV> for any
 needs that fall outside of the rather narrow delineations of this module.
 
