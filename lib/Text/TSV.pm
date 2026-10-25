@@ -149,6 +149,7 @@ sub _set_handle {
     else {
         open $fh_in, '<', $self->{fn};
     }
+    binmode $fh_in, ':encoding(UTF-8)';
     $self->{fh} = $fh_in;
 
 }
