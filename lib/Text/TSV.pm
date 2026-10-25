@@ -23,7 +23,18 @@ sub new {
 
     my $self = bless {fn => $fn_in}, $class;
 
+    my @valid_args = qw/
+        has_header
+        strict
+        strip_comments
+        expected_headers
+    /;
+
     # validation checks
+    for my $k (keys %args) {
+        die "Invalid argument passed: $k\n"
+            if (! any {$k eq $_} @valid_args);
+    }
     die "Error: expected_headers requires has_header => 1\n"
         if defined $args{expected_headers}
             && defined $args{has_header}

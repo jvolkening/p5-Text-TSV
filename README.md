@@ -1,66 +1,174 @@
-BioX::Tax::Kraken
+Text::TSV
 =========
 
-[![Tests](https://github.com/jvolkening/p5-BioX-Tax-Kraken/actions/workflows/tests.yml/badge.svg)](https://github.com/jvolkening/p5-BioX-Tax-Kraken/actions/workflows/tests.yml)
-[![Coverage Status](https://coveralls.io/repos/github/jvolkening/p5-BioX-Tax-Kraken/badge.svg?branch=main)](https://coveralls.io/github/jvolkening/p5-BioX-Tax-Kraken?branch=main)
-[![CPAN version](https://badge.fury.io/pl/BioX-Tax-Kraken.svg)](https://badge.fury.io/pl/BioX-Tax-Kraken)
+[![Tests](https://github.com/jvolkening/p5-Text-TSV/actions/workflows/tests.yml/badge.svg)](https://github.com/jvolkening/p5-Text-TSV/actions/workflows/tests.yml)
+[![Coverage Status](https://coveralls.io/repos/github/jvolkening/p5-Text-TSV/badge.svg?branch=main)](https://coveralls.io/github/jvolkening/p5-Text-TSV?branch=main)
+[![CPAN version](https://badge.fury.io/pl/Text-TSV.svg)](https://badge.fury.io/pl/Text-TSV)
 
 **WARNING**: Currently in testing phase. The API may change in future releases without notice. You have been warned!
 
-`BioX::Tax::Kraken` is a simple interface to a Kraken-style flatfile
-taxonomic database, typically using the filename 'taxDB'. This file format is
-a four-column tab-delimited text file, where the columns contain:
+# NAME
 
-1. taxonomic ID
+Text::TSV - simple, robust parsing of tab-delimited text
 
-2. parent ID
+# SYNOPSIS
 
-3. name (typically scientific)
+    use Text::TSV;
 
-4. rank
+    # file with a header line (the default); records returned as hashref
+    my $tsv = Text::TSV->new(
+        'data.tsv.xz',
+        expected_headers => [qw/id name/],
+    );
+    while (my $rec = $tsv->next_record) {
+        say "$rec->{id}: $rec->{name}";
+    }
 
-This distribution has a single class with methods to look up and compare
-entries in a Kraken-style taxonomic database based on one or more taxonomic
-IDs. It is designed to be simple and correct, and it is written to balance
-speed and memory consumption. It is neither blazing fast nor ultra memory
-efficient; there are better options for taxonomic data storage formats and
-interfaces if you have one of these requirements. This software's only purpose
-is to facilitate easy access to the information stored in a Kraken-style
-database if you are already using that format for other reasons.
+    # file without a header line; records returned as arrayref
+    my $raw = Text::TSV->new(
+        'data.tsv',
+        has_header => 0
+    );
+    while (my $row = $raw->next_record) {
+        say join ',', @{ $row };
+    }
 
-INSTALLATION
-------------
+    # lenient parsing
+    my $lax = Text::TSV->new(
+        'data.tsv',
+        strict => 0,
+        strip_comments => 0
+    );
 
-To install this module, run the following commands:
-    
-    git clone https://github.com/jvolkening/p5-BioX-Tax-Kraken.git
-    cd p5-BioX-Tax-Kraken
-	perl Build.PL
-	./Build
-	./Build test
-	./Build install
+# DESCRIPTION
 
-Or, with cpanminus:
+`Text::TSV` reads tab-delimited text files one record at a time and returns
+each record as a hashref or arrayref, depending on whether the first row is
+treated as a header. It does no quoting or escaping: fields are separated by
+single tab characters. Input is decoded as UTF-8. Compressed input is detected
+automatically from magic bytes (not file extension).
 
-    cpanm BioX::Tax-Kraken
+This is a purpose-built module whose purpose is to enable robust parsing of standard
+tab-delimited data with minimal code. It is \*much\* less flexible than `Text::CSV`,
+which you should use if you need anything other than vanilla tab-delimited
+parsing.
 
-Or, with conda (although not yet!):
+By default, this module expects rectangular (every row has the same number
+of fields) tab-delimited input where the first non-commented line contains
+column headers. Lines beginning with a '#' are ignored as comments. Blank
+lines are considered malformed. A few of these assumptions can be tweaked
+using the constructor options described below.
 
-    conda install -c bioconda perl-biox-tax-kraken
+# CONSTRUCTOR
 
-SUPPORT AND DOCUMENTATION
--------------------------
+- **new** _filename_ \[_options_\]
 
-After installing, you can find documentation for this module with the
-perldoc command.
+        my $tsv = Text::TSV->new(
+            $fn,
+            strict => 1,
+            has_header => 1
+        );
 
-    perldoc BioX::Tax::Kraken
+    Opens the file and, if headers are expected, reads and validates the header
+    line. Dies on any error. Options:
 
-LICENSE AND COPYRIGHT
----------------------
+    - **has\_header** (default: 1)
 
-Copyright (C) 2026 Jeremy Volkening <jeremy.volkening@base2bio.com>
+        If true, the first content line is parsed as column names and records are
+        returned as hash references. If false, records are returned as array
+        references.
 
-This library is licensed under the same terms as Perl 5 itself. See the LICENSE
-file in the top-level directory of this distribution for the full license
-terms.
+    - **expected\_headers** (default: none)
+
+        Array reference of column names that must be present in the header line
+        (extra columns are allowed). Dies with `Missing expected header 'NAME'` if
+        one is absent. Supplying this together with an explicitly false `has_header`
+        is a configuration error and dies. Column names are case-sensitive.
+
+    - **strict** (default: 1)
+
+        See ["STRICT VS NON-STRICT MODE"](#strict-vs-non-strict-mode).
+
+    - **strip\_comments** (default: 1)
+
+        If true, lines whose first non-space character (space characters only, not
+        tabs) is `#` are skipped, including before the header. If false, such lines
+        are treated as ordinary data (or header) lines.
+
+# METHODS
+
+- **next\_record**
+
+        while (my $rec = $tsv->next_record) { ... }
+
+    Returns the next record, or an empty list/undef at end of input. With headers,
+    the record is a hash reference mapping header names to field values; without
+    headers it is an array reference of fields. In strict mode (default), empty
+    fields are allowed, but a mismatch between record field count and header name
+    count will throw an error. In non-strict mode, if a row has fewer fields than
+    headers, the missing fields are undefined; if it has more, the extra fields
+    are ignored in the hash. Trailing empty fields are preserved.
+
+- **headers**
+
+        my @h = $tsv->headers;
+
+    Returns an array of header names, or undef if no headers were present/parsed.
+
+# INPUT FORMAT AND ASSUMPTIONS
+
+- Lines end in `\n` or `\r\n`; the line ending is removed.
+- Fields are separated by a single tab; no quoting is supported.
+- Header names must be non-empty (not blank/whitespace) and unique;
+duplicates trigger an error rather than silently losing data.
+- Text is read as UTF-8. No byte-order-mark (BOM) handling is performed;
+a BOM will remain part of the first header name.
+- Unrecognized input whose first bytes look binary (control characters)
+dies.
+
+# COMPRESSION SUPPORT
+
+For speed, compressed files are read through external decompressors if
+possible, falling back to (slow!) core Perl modules if an external
+decompresssor is not found. Detection is by magic bytes: XZ (`xzcat`), gzip
+(`zcat`), bzip2 (`bzcat`) and zstd (`zstdcat`).
+
+# STRICT VS NON-STRICT MODE
+
+In strict mode (the default):
+
+- every record must have the same number of fields as the header (or as
+the first record, when there is no header); otherwise `next_record` dies with
+a "column count mismatch" error;
+- the header line must contain at least one tab;
+- blank lines are not skipped and so fail the width check (unless the
+file has a single column and no header).
+
+In non-strict mode, width mismatches are tolerated, completely empty lines are
+skipped, and a single-column header is allowed. Lines containing only
+whitespace other than a newline are not considered blank.
+
+# ERROR HANDLING
+
+All errors are thrown with `die`; wrap calls in `eval` or a try/catch
+module to handle them. Errors include: unreadable file, binary input,
+missing decompressor, missing header line, empty or duplicate header names,
+missing expected headers, conflicting options, and (strict mode) column count
+mismatches.
+
+# CAVEATS AND BUGS
+
+External decompressors must be installed for compressed input. Please report
+bugs or feature requests through the issue tracker at
+[https://github.com/jvolkening/p5-Text-TSV/issues](https://github.com/jvolkening/p5-Text-TSV/issues).
+
+# AUTHOR
+
+Jeremy Volkening &lt;jeremy.volkening \*at\* base2bio.com>
+
+# COPYRIGHT AND LICENSE
+
+Copyright 2026 Jeremy Volkening
+
+This software is licensed under the same terms as Perl 5 itself. See LICENSE
+file for full details.
