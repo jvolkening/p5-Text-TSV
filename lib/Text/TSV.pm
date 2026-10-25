@@ -7,7 +7,6 @@ use autodie;
 use utf8;
 use open qw(:std :utf8);
 
-use IO::Uncompress::AnyUncompress;
 use IPC::Cmd qw/can_run/;
 use List::Util qw/any/;
 
