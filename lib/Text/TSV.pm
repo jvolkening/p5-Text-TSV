@@ -1,4 +1,4 @@
-package Text::TSV 0.001;
+package Text::TSV 0.002;
 
 use strict;
 use warnings;
@@ -141,6 +141,12 @@ sub _set_handle {
 
     my ($self) = @_;
 
+    if ($self->{fn} eq '-') {
+        binmode STDIN, ':encoding(UTF-8)';
+        $self->{fh} = \*STDIN;
+        return;
+    }
+
     my $fh_in;
     my %pp_opts = ( MultiStream => 1 );
     my ($tool, $label);
@@ -181,6 +187,8 @@ sub _set_handle {
     binmode $fh_in, ':encoding(UTF-8)'
         if (! $self->{_decode_by_line});
     $self->{fh} = $fh_in;
+
+    return;
 
 }
 
@@ -287,8 +295,8 @@ needs that fall outside of the rather narrow delineations of this module.
         has_header => 1
     );
 
-Opens the file and, if headers are expected, reads and validates the header
-line. Dies on any error. Options:
+Opens the named file (or reads from STDIN if '-' is given) and, if headers are
+expected, reads and validates the header line. Dies on any error. Options:
 
 =over 4
 

@@ -1,5 +1,7 @@
 Revision history for Text-TSV
 
+0.002    2026-11-01
+         Allow reading from STDIN
 0.001    2026-10-24
          Initial release
 
