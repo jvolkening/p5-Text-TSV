@@ -77,6 +77,8 @@ subtest 'strict width' => sub {
     $t = Text::TSV->new(mk("1\t2\n3\n"), has_header => 0);
     $t->next_record;
     like(dies { $t->next_record }, qr/column count mismatch/, 'headerless');
+    $t = Text::TSV->new(mk("\n"), has_header => 0);
+    like(dies { $t->next_record }, qr/blank line/, 'blank first headerless row');
     like(dies { Text::TSV->new(mk("a\n1\n")) }, qr/no delimiters/,
         'single-column header in strict');
 };
@@ -198,6 +200,21 @@ subtest 'Perl fallback used when decompressor not found' => sub {
     my $t = Text::TSV->new($fn);
     ok($t->{fh}->isa('IO::Uncompress::Base'), 'fallback handle used');
     is(all($t), \@expect, 'records parsed via Perl fallback');
+};
+
+subtest 'external decompressor errors' => sub {
+    skip_all 'gzip decompressor unavailable' if !$has_gz;
+
+    my $fn = compressed('gzip', 'gzip -c');
+    skip_all 'cannot create gzip test file' if !defined $fn;
+    open my $in, '+<:raw', $fn or die $!;
+    my $size = -s $in;
+    truncate($in, $size - 8) or die $!;
+    close $in or die $!;
+
+    my $t = Text::TSV->new($fn);
+    like(dies { all($t) }, qr/decompressor 'zcat' failed/,
+        'truncated gzip input reports decompressor failure');
 };
 
 subtest 'plain file' => sub {

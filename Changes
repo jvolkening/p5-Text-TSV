@@ -1,5 +1,8 @@
 Revision history for Text-TSV
 
+0.002001 2026-11-03
+         Check return status of external decompressors
+         Check for blank lines at start of file
 0.002    2026-11-01
          Allow reading from STDIN
 0.001    2026-10-24

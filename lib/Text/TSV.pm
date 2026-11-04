@@ -1,4 +1,4 @@
-package Text::TSV 0.002;
+package Text::TSV 0.002001;
 
 use strict;
 use warnings;
@@ -65,9 +65,13 @@ sub next_record {
         next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
         last;
     }
+    $self->_finish_external_input()
+        if (! defined $line);
     return if (! defined $line);
     chomp $line;
     $line =~ s/\r\z//;
+    die "Strict mode failure: blank line\n"
+        if ($self->{strict} && !$self->{has_headers} && $line eq '');
     my @f = split "\t", $line, -1;
     $self->{width} //= scalar @f;
     die "Strict mode failure: column count mismatch\n"
@@ -93,6 +97,8 @@ sub _parse_headers {
         next if !$self->{strict} && $line =~ /\A\r?\n?\z/;
         last;
     }
+    $self->_finish_external_input()
+        if (! defined $line);
     die "Error: missing header line when told to expect\n"
         if (! defined $line);
     chomp $line;
@@ -167,6 +173,7 @@ sub _set_handle {
         my $tool_path = can_run $tool;
         if ($tool_path) {
             open $fh_in, '-|', $tool_path, $self->{fn};
+            $self->{_external_decompressor} = $tool;
         }
         else {
             $fh_in = IO::Uncompress::AnyUncompress->new($self->{fn}, %pp_opts)
@@ -187,6 +194,27 @@ sub _set_handle {
     binmode $fh_in, ':encoding(UTF-8)'
         if (! $self->{_decode_by_line});
     $self->{fh} = $fh_in;
+
+    return;
+
+}
+
+sub _finish_external_input {
+
+    my ($self) = @_;
+
+    return if !$self->{_external_decompressor}
+        || $self->{_input_closed};
+
+    my $fh = $self->{fh};
+    my $ok = CORE::close $fh;
+    my $status = $?;
+    $self->{_input_closed} = 1;
+    die sprintf(
+        "Error: decompressor '%s' failed for '%s' (status %d)\n",
+        $self->{_external_decompressor},
+        $self->{fn}, $status
+    ) if (!$ok || $status != 0);
 
     return;
 
