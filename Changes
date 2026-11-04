@@ -1,5 +1,8 @@
 Revision history for Text-TSV
 
+0.002002 2026-11-03
+         Correctly handle additional next_record() calls after closing
+            external handle
 0.002001 2026-11-03
          Check return status of external decompressors
          Check for blank lines at start of file

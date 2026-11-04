@@ -1,4 +1,4 @@
-package Text::TSV 0.002001;
+package Text::TSV 0.002002;
 
 use strict;
 use warnings;
@@ -55,6 +55,8 @@ sub new {
 sub next_record {
     
     my ($self) = @_;
+
+    return if $self->{_input_closed};
 
     my $fh = $self->{fh};
     my $line;
